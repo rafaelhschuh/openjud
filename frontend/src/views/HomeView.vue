@@ -1,10 +1,10 @@
 <template>
-  <div class="home-view">
-    <div class="container">
+  <div class="search-view">
+    <div class="search-container">
       <SearchForm :loading="loading" @search="handleSearch" @clear="handleClear" />
 
       <div class="results-section">
-        <LoadingSpinner v-if="loading" label="Pesquisando processos..." />
+        <LoadingSpinner v-if="loading" label="Processando busca..." />
 
         <div v-else-if="error" class="error-message">
           <p>⚠️ {{ error }}</p>
@@ -13,21 +13,23 @@
         <div v-else-if="!hasSearched" class="initial-state">
           <div class="initial-content">
             <p class="initial-emoji">🔍</p>
-            <h2>Comece sua pesquisa</h2>
-            <p>Use o formulário acima para buscar processos judiciais na base de dados do DataJud</p>
+            <h2>Pesquise por processos</h2>
+            <p>Utilize os filtros acima para encontrar processos judiciais</p>
+            <router-link to="/" class="btn btn-secondary">← Voltar ao Feed</router-link>
           </div>
         </div>
 
         <div v-else-if="results.length === 0" class="empty-state">
-          <p>Nenhum processo encontrado com os critérios de busca.</p>
+          <p>Nenhum processo encontrado com esses critérios.</p>
+          <router-link to="/" class="btn btn-secondary">← Voltar ao Feed</router-link>
         </div>
 
-        <div v-else class="results-container animate-stagger">
+        <div v-else class="results-container">
           <div class="results-header">
             <h2>Resultados ({{ results.length }} processo{{ results.length !== 1 ? 's' : '' }})</h2>
           </div>
 
-          <div class="results-grid">
+          <div class="results-grid animate-stagger">
             <ProcessCard v-for="processo in results" :key="processo.id" :processo="processo" />
           </div>
         </div>
@@ -60,13 +62,13 @@ const handleClear = () => {
 </script>
 
 <style scoped>
-.home-view {
+.search-view {
   min-height: 100vh;
   padding: var(--spacing-lg);
   background-color: var(--color-bg-primary);
 }
 
-.container {
+.search-container {
   max-width: 1280px;
   margin: 0 auto;
 }
@@ -108,6 +110,26 @@ const handleClear = () => {
   color: var(--color-text-secondary);
 }
 
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background-color: var(--color-bg-secondary);
+  color: var(--color-accent);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  text-decoration: none;
+  transition: all var(--transition-fast);
+  cursor: pointer;
+}
+
+.btn:hover {
+  background-color: var(--color-bg-tertiary);
+  border-color: var(--color-accent);
+}
+
 .results-header {
   margin-bottom: var(--spacing-lg);
   padding-bottom: var(--spacing-lg);
@@ -126,7 +148,7 @@ const handleClear = () => {
 }
 
 @media (max-width: 768px) {
-  .home-view {
+  .search-view {
     padding: var(--spacing-md);
   }
 
@@ -135,3 +157,4 @@ const handleClear = () => {
   }
 }
 </style>
+

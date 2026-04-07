@@ -2,6 +2,7 @@ import express, { Express, Request, Response } from 'express'
 import { corsMiddleware } from './middleware/cors.js'
 import { errorHandler, notFoundHandler, requestLogger } from './middleware/errorHandler.js'
 import processesRouter from './routes/processes.js'
+import configRouter from './routes/config.js'
 import { logger } from './utils/logger.js'
 
 export const createApp = (): Express => {
@@ -25,6 +26,7 @@ export const createApp = (): Express => {
 
   // API Routes
   app.use('/api/processes', processesRouter)
+  app.use('/api/config', configRouter)
 
   // 404 Handler
   app.use(notFoundHandler)
@@ -43,6 +45,9 @@ export const startServer = async (): Promise<void> => {
     app.listen(port, '0.0.0.0', () => {
       logger.info(`🚀 Server running on http://0.0.0.0:${port}`)
       logger.info(`📡 DataJud API: ${process.env.DATAJUD_API_BASE_URL}`)
+      if (process.env.DATAJUD_API_KEY) {
+        logger.info('✅ API Key configured')
+      }
     })
   } catch (error) {
     logger.error('Failed to start server', error)

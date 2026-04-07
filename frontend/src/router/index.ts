@@ -1,11 +1,17 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import FeedView from '@/views/FeedView.vue'
 import HomeView from '@/views/HomeView.vue'
 import ProcessView from '@/views/ProcessView.vue'
 
 const routes = [
   {
     path: '/',
-    name: 'Home',
+    name: 'Feed',
+    component: FeedView,
+  },
+  {
+    path: '/search',
+    name: 'Search',
     component: HomeView,
   },
   {
@@ -24,3 +30,4 @@ const router = createRouter({
 })
 
 export default router
+

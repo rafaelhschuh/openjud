@@ -1,26 +1,83 @@
-import axios, { AxiosInstance } from 'axios'
+import axios, { AxiosInstance, AxiosRequestConfig } from 'axios'
 import { logger } from '../utils/logger.js'
 import { Processo, SearchParams, SearchResponse } from '../types/index.js'
 
+interface CacheEntry {
+  data: Processo[]
+  timestamp: number
+}
+
 export class DataJudService {
   private client: AxiosInstance
+  private cache: Map<string, CacheEntry> = new Map()
+  private cacheExpiry: number = 5 * 60 * 1000 // 5 minutos
 
-  constructor(baseURL: string = 'https://api-publica.datajud.cnj.jus.br/') {
-    this.client = axios.create({
+  constructor(
+    baseURL: string = 'https://api-publica.datajud.cnj.jus.br/',
+    private apiKey?: string
+  ) {
+    const config: AxiosRequestConfig = {
       baseURL,
       timeout: parseInt(process.env.DATAJUD_API_TIMEOUT || '30000', 10),
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    })
+      headers: this.getHeaders(),
+    }
 
-    logger.debug('DataJudService initialized', { baseURL })
+    this.client = axios.create(config)
+
+    logger.debug('DataJudService initialized', { baseURL, apiKeyConfigured: !!apiKey })
   }
 
   /**
-   * Search for processes by various criteria
+   * Get request headers with API Key if available
+   */
+  private getHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    }
+
+    if (this.apiKey) {
+      headers['Authorization'] = `APIKey ${this.apiKey}`
+    }
+
+    return headers
+  }
+
+  /**
+   * Set or update API Key
+   */
+  setApiKey(apiKey: string): void {
+    this.apiKey = apiKey
+    this.client.defaults.headers.common = this.getHeaders() as any
+    this.cache.clear()
+    logger.info('API Key updated')
+  }
+
+  /**
+   * Get cache key for query
+   */
+  private getCacheKey(params: SearchParams, page: number): string {
+    return JSON.stringify({ ...params, page })
+  }
+
+  /**
+   * Check if cache entry is still valid
+   */
+  private isCacheValid(entry: CacheEntry): boolean {
+    return Date.now() - entry.timestamp < this.cacheExpiry
+  }
+
+  /**
+   * Search for processes by various criteria (with caching)
    */
   async searchProcesses(params: SearchParams, page: number = 1, limit: number = 20): Promise<Processo[]> {
+    const cacheKey = this.getCacheKey(params, page)
+
+    const cachedEntry = this.cache.get(cacheKey)
+    if (cachedEntry && this.isCacheValid(cachedEntry)) {
+      logger.debug('Cache hit for query', { cacheKey })
+      return cachedEntry.data
+    }
+
     try {
       const query = this.buildQuery(params, page, limit)
       logger.debug('Searching processes', { query })
@@ -31,7 +88,13 @@ export class DataJudService {
 
       if (response.data.hits?.hits) {
         const processos = response.data.hits.hits.map((hit) => hit._source)
-        logger.info(`Found ${processos.length} processes`)
+
+        this.cache.set(cacheKey, {
+          data: processos,
+          timestamp: Date.now(),
+        })
+
+        logger.info(`Found ${processos.length} processes (cached for 5 min)`)
         return processos
       }
 
@@ -43,9 +106,17 @@ export class DataJudService {
   }
 
   /**
-   * Get a specific process by ID
+   * Get a specific process by ID (with caching)
    */
   async getProcess(id: string): Promise<Processo | null> {
+    const cacheKey = `process_${id}`
+
+    const cachedEntry = this.cache.get(cacheKey)
+    if (cachedEntry && this.isCacheValid(cachedEntry)) {
+      logger.debug('Cache hit for process', { id })
+      return cachedEntry.data[0] || null
+    }
+
     try {
       logger.debug('Fetching process', { id })
 
@@ -54,7 +125,12 @@ export class DataJudService {
       )
 
       if (response.data._source) {
-        logger.info(`Process fetched: ${id}`)
+        this.cache.set(cacheKey, {
+          data: [response.data._source],
+          timestamp: Date.now(),
+        })
+
+        logger.info(`Process fetched: ${id} (cached for 5 min)`)
         return response.data._source
       }
 
@@ -63,6 +139,44 @@ export class DataJudService {
       logger.error('Error fetching process', error)
       throw new Error('Failed to fetch process')
     }
+  }
+
+  /**
+   * Get recent processes (últimos 30 dias)
+   */
+  async getRecentProcesses(limit: number = 20): Promise<Processo[]> {
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+    const dateFrom = thirtyDaysAgo.toISOString().split('T')[0]
+
+    return this.searchProcesses(
+      {
+        dataAjuizamentoFrom: dateFrom,
+      },
+      1,
+      limit
+    )
+  }
+
+  /**
+   * Clear cache
+   */
+  clearCache(): void {
+    this.cache.clear()
+    logger.info('Cache cleared')
+  }
+
+  /**
+   * Get cache stats
+   */
+  getCacheStats(): { size: number; entries: number } {
+    let validEntries = 0
+    for (const entry of this.cache.values()) {
+      if (this.isCacheValid(entry)) {
+        validEntries++
+      }
+    }
+    return { size: this.cache.size, entries: validEntries }
   }
 
   /**
@@ -112,8 +226,6 @@ export class DataJudService {
   async getTribunals(): Promise<string[]> {
     try {
       logger.debug('Fetching tribunals')
-      // This would need to be implemented based on DataJud API documentation
-      // For now, return a hardcoded list of common Brazilian courts
       return [
         'STF',
         'STJ',
@@ -147,4 +259,15 @@ export class DataJudService {
   }
 }
 
-export const datajudService = new DataJudService()
+let datajudService: DataJudService
+
+export function getDataJudService(): DataJudService {
+  if (!datajudService) {
+    const apiKey = process.env.DATAJUD_API_KEY
+    datajudService = new DataJudService(
+      process.env.DATAJUD_API_BASE_URL || 'https://api-publica.datajud.cnj.jus.br/',
+      apiKey
+    )
+  }
+  return datajudService
+}

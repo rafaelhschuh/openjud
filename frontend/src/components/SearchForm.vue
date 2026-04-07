@@ -1,5 +1,10 @@
 <template>
   <form @submit.prevent="handleSubmit" class="search-form animate-slide-up">
+    <div class="form-header">
+      <h2>🔍 Pesquisa Avançada</h2>
+      <router-link to="/" class="back-link">← Voltar ao Feed</router-link>
+    </div>
+
     <div class="form-grid">
       <div class="form-group">
         <label for="numeroProcesso">Nº do Processo:</label>
@@ -7,7 +12,7 @@
           id="numeroProcesso"
           v-model="query.numeroProcesso"
           type="text"
-          placeholder="Digite o número do processo"
+          placeholder="0000000-00.0000.0.00.0000"
           class="form-input"
         />
       </div>
@@ -43,7 +48,7 @@
           id="assunto"
           v-model="query.assunto"
           type="text"
-          placeholder="Ex: Direito Civil"
+          placeholder="Ex: 2501"
           class="form-input"
         />
       </div>
@@ -54,7 +59,7 @@
         <span v-if="!loading">🔍 Pesquisar</span>
         <span v-else>⏳ Processando...</span>
       </button>
-      <button type="button" @click="handleClear" class="btn btn-secondary">Limpar</button>
+      <button type="button" @click="handleClear" class="btn btn-secondary">🗑️ Limpar</button>
     </div>
   </form>
 </template>
@@ -110,6 +115,33 @@ const handleClear = () => {
   margin: 0 auto;
 }
 
+.form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-lg);
+  padding-bottom: var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.form-header h2 {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-xl);
+}
+
+.back-link {
+  color: var(--color-accent);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: var(--font-size-sm);
+  transition: color var(--transition-fast);
+}
+
+.back-link:hover {
+  color: var(--color-accent-light);
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -161,6 +193,7 @@ label {
   display: inline-flex;
   align-items: center;
   gap: var(--spacing-sm);
+  border: none;
 }
 
 .btn-primary {
