@@ -13,7 +13,7 @@ services:
       - LOG_LEVEL=info
       - DATAJUD_API_BASE_URL=https://api-publica.datajud.cnj.jus.br/
       - DATAJUD_API_TIMEOUT=30000
-      - CORS_ORIGIN=*
+      - CORS_ORIGIN=http://localhost:5173,http://localhost:3001
     networks:
       - openjud-network
     restart: unless-stopped
@@ -27,7 +27,7 @@ services:
     ports:
       - "5173:5173"
     environment:
-      - VITE_API_URL=http://backend:3001
+      - VITE_API_URL=http://localhost:3001
     depends_on:
       - backend
     networks:

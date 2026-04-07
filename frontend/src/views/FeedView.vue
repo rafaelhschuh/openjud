@@ -17,7 +17,12 @@
 
       <!-- Empty State -->
       <div v-else-if="processes.length === 0" class="empty-state">
-        <p>Nenhum processo encontrado no momento</p>
+        <p v-if="showApiKeyHint" class="hint-message">
+          <strong>Chave de API não configurada</strong><br />
+          Clique em ⚙️ (Configurações) no canto superior direito e adicione sua chave DataJud para ver processos.<br />
+          <a href="https://datajud-wiki.cnj.jus.br/api-publica/" target="_blank">Obter chave aqui →</a>
+        </p>
+        <p v-else>Nenhum processo encontrado no momento</p>
       </div>
 
       <!-- Feed Posts -->
@@ -83,9 +88,15 @@ import LoadingSpinner from '@/components/LoadingSpinner.vue'
 const { getRecentProcesses, loading, error } = useApi()
 
 const processes = ref<Processo[]>([])
+const showApiKeyHint = ref(false)
 
 onMounted(async () => {
   processes.value = await getRecentProcesses(15)
+
+  // Show hint if request failed (likely due to missing API key)
+  if (error.value && processes.value.length === 0) {
+    showApiKeyHint.value = true
+  }
 })
 
 const formatarNumeroProcesso = (numero: string): string => {
@@ -162,6 +173,27 @@ const formatarData = (data: string): string => {
   padding: var(--spacing-2xl);
   color: var(--color-text-secondary);
   animation: slideUp var(--transition-slow);
+}
+
+.hint-message {
+  margin: 0;
+  padding: var(--spacing-lg);
+  background-color: var(--color-bg-secondary);
+  border-left: 4px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  line-height: 1.6;
+}
+
+.hint-message a {
+  color: var(--color-accent);
+  font-weight: 600;
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.hint-message a:hover {
+  text-decoration: underline;
 }
 
 .feed-posts {
