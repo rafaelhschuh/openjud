@@ -1,0 +1,41 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: openjud-backend:latest
+    container_name: openjud-backend
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - LOG_LEVEL=info
+      - DATAJUD_API_BASE_URL=https://api-publica.datajud.cnj.jus.br/
+      - DATAJUD_API_TIMEOUT=30000
+      - CORS_ORIGIN=*
+    networks:
+      - openjud-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: openjud-frontend:latest
+    container_name: openjud-frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://backend:3001
+    depends_on:
+      - backend
+    networks:
+      - openjud-network
+    restart: unless-stopped
+
+networks:
+  openjud-network:
+    driver: bridge
+
+volumes: {}
